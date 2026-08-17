@@ -212,6 +212,7 @@ const btnQuitBattle = document.getElementById('btn-quit-battle');
 const syncGroupCodeInput = document.getElementById('sync-group-code');
 const btnSyncGroup = document.getElementById('btn-sync-group');
 const syncStatusEl = document.getElementById('sync-status');
+const leaderboardList = document.getElementById('leaderboard-list');
 
 // Battle Screen Stats
 const stageNumberEl = document.getElementById('stage-number');
@@ -303,6 +304,7 @@ function init() {
 
     // Load initial profiles
     loadProfiles();
+    loadLeaderboard();
     
 
 
@@ -808,7 +810,7 @@ function loadProfiles() {
             syncStatusEl.classList.remove('error');
         }
         
-        db.collection('groups').doc(groupCode).collection('profiles').get()
+        db.collection('global_profiles').where('groupCode', '==', groupCode).get()
             .then(querySnapshot => {
                 const fetched = [];
                 querySnapshot.forEach(doc => {
@@ -885,6 +887,7 @@ function handleGroupSync() {
             syncStatusEl.classList.remove('error');
         }
         loadProfiles();
+        loadLeaderboard();
         return;
     }
     
@@ -896,11 +899,75 @@ function handleGroupSync() {
             syncStatusEl.classList.add('error');
         }
         loadProfiles();
+        loadLeaderboard();
         return;
     }
     
     localStorage.setItem('math_boss_group_code', groupCode);
     loadProfiles();
+    loadLeaderboard();
+}
+
+function loadLeaderboard() {
+    if (!leaderboardList) return;
+    
+    if (!isFirebaseActive) {
+        leaderboardList.innerHTML = '<div class="leaderboard-empty">⚠️ 未設定雲端資料庫，無法載入排行榜。</div>';
+        return;
+    }
+    
+    leaderboardList.innerHTML = '<div class="leaderboard-loading">載入排行中...</div>';
+    
+    // Query global_profiles flat collection - ordered by unlocked stage descending, limited to top 10
+    db.collection('global_profiles')
+        .orderBy('unlockedStageIndex', 'desc')
+        .limit(10)
+        .get()
+        .then(querySnapshot => {
+            leaderboardList.innerHTML = '';
+            
+            if (querySnapshot.empty) {
+                leaderboardList.innerHTML = '<div class="leaderboard-empty">🏆 目前尚無排行榜資料。第一個挑戰吧！</div>';
+                return;
+            }
+            
+            let rank = 1;
+            querySnapshot.forEach(doc => {
+                const p = doc.data();
+                
+                let emoji = '👦';
+                if (p.order === '老大') emoji = '👑';
+                else if (p.order === '老二') emoji = '🥈';
+                else if (p.order === '老三') emoji = '🥉';
+                else if (p.order === '阿公') emoji = '👴';
+                else if (p.order === '阿婆') emoji = '👵';
+                
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+                const stageNum = p.unlockedStageIndex + 1;
+                const groupDisplay = p.groupCode ? p.groupCode : '本地';
+                
+                const item = document.createElement('div');
+                item.className = `leaderboard-item ${rankClass}`;
+                item.innerHTML = `
+                    <div class="rank-badge">${rankDisplay}</div>
+                    <div class="leaderboard-avatar">${emoji}</div>
+                    <div class="leaderboard-details">
+                        <div class="leaderboard-name-row">
+                            <span class="leaderboard-name">${escapeHTML(p.name)}</span>
+                            <span class="leaderboard-group">${escapeHTML(groupDisplay)}</span>
+                        </div>
+                    </div>
+                    <div class="leaderboard-progress">第 ${stageNum} 關</div>
+                `;
+                leaderboardList.appendChild(item);
+                rank++;
+            });
+        })
+        .catch(err => {
+            console.error("Failed to load leaderboard:", err);
+            leaderboardList.innerHTML = '<div class="leaderboard-empty">❌ 排行榜載入失敗。</div>';
+        });
 }
 
 function renderProfiles() {
@@ -984,10 +1051,13 @@ function createProfile() {
         return;
     }
 
+    const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
+
     const newProfile = {
         id: Date.now().toString(),
         name: name,
         order: order,
+        groupCode: groupCode || '本地',
         unlockedStageIndex: 0,
         history: []
     };
@@ -1000,11 +1070,11 @@ function createProfile() {
     localStorage.setItem('math_boss_active_profile_id', newProfile.id);
 
     // Save to Firestore if active
-    const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
     if (isFirebaseActive && groupCode) {
-        db.collection('groups').doc(groupCode).collection('profiles').doc(newProfile.id).set(newProfile)
+        db.collection('global_profiles').doc(newProfile.id).set(newProfile)
             .then(() => {
                 console.log("Profile successfully created in Firestore");
+                loadLeaderboard(); // refresh leaderboard
             })
             .catch(err => {
                 console.error("Firestore write failed:", err);
@@ -1044,9 +1114,10 @@ function saveActiveProfileProgress(hasPassed) {
         // Save to Firestore if active
         const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
         if (isFirebaseActive && groupCode) {
-            db.collection('groups').doc(groupCode).collection('profiles').doc(activeProfile.id).set(activeProfile)
+            db.collection('global_profiles').doc(activeProfile.id).set(activeProfile)
                 .then(() => {
                     console.log("Progress successfully updated in Firestore");
+                    loadLeaderboard(); // refresh leaderboard
                 })
                 .catch(err => {
                     console.error("Firestore progress write failed:", err);

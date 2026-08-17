@@ -1,6 +1,6 @@
-# Walkthrough: Math Boss Battle Game (Firebase Firestore Cloud Sync Edition)
+# Walkthrough: Math Boss Battle Game (Global Leaderboard Edition)
 
-We have successfully integrated a **Firebase Firestore Cloud database** into the game, complete with a frictionless "Family/Group Code" sync mechanism and automatic LocalStorage offline fallback.
+We have successfully integrated a **Global Leaderboard Panel (勇者全球排行榜)** and migrated our Firebase Firestore database to a **Flat Collection Schema (`/global_profiles`)** to support index-free global rankings.
 
 ---
 
@@ -21,45 +21,26 @@ Use the carousel below to view the cartoonized premium illustration card avatars
 
 ---
 
-## ☁️ Firebase Firestore Cloud Sync
+## 🏆 Global Leaderboard & Flat Firestore Schema
 
-### 1. Frictionless Group Code UI
-- Added a **「雲端同步代碼」** (Cloud Sync Code) input panel directly on the profile screen in [index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html).
-- Families or classroom groups can enter a custom code (e.g. `朱家班` or `1234`) and click **「同步資料」** to instantly download and load all profiles stored under that code in the cloud database.
+### 1. Global Leaderboard Panel (🏆 勇者全球排行榜)
+- Restructured the profile section in [index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html) and [index.css](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.css) to support a side-by-side split grid.
+- The leaderboard pulls the top 10 profiles from the flat `/global_profiles` Firestore collection and dynamically orders them based on their highest unlocked stage index.
+- Displays the player's Rank (🥇, 🥈, 🥉 for the top 3, and numbers for others), Avatar Emoji, Name, Group Code label, and Unlocked Stage Level.
 
-### 2. Hybrid Data Persistence & Fallback
-- **Cloud Mode**: If a `firebaseConfig` is active at the top of [app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js) and a Group Code is entered, creating characters, updating level unlocks, and adding combat history will write to Firestore globally.
-- **Offline / Local Mode**: If no Firebase credentials are configured in the code, the game displays a warning and automatically falls back to single-device LocalStorage so the game never breaks. It also caches cloud-fetched data locally to allow offline playing.
+### 2. Flat Database Schema (Index-Free Setup)
+- To avoid requiring the parent/teacher to manually set up complex indexes in their Firebase Console, we migrated the database structure to a flat collection: `/global_profiles/{profileId}`.
+- Every profile document has a `groupCode` field.
+- Loading group profiles now queries `/global_profiles` with `.where('groupCode', '==', groupCode)`.
+- Querying the global leaderboard queries `/global_profiles` with `.orderBy('unlockedStageIndex', 'desc')`. Both queries are indexed automatically by Firestore out-of-the-box.
 
----
-
-## 👤 Hero Profile Selection & Resume Features
-
-1. **Child Identity & Birth Order**:
-   - The home screen lists existing characters and has a **「登記新勇者」(Register New Hero)** button.
-   - Children register by entering their **姓名 (Name)** and selecting their **出生順序 (Birth Order)** (老大, 老二, 老三, 老四, 老五, 老六, 阿公, 阿婆).
-   - Emojis are assigned dynamically: 老大 $\rightarrow$ 👑, 老二 $\rightarrow$ 🥈, 老三 $\rightarrow$ 🥉, 阿公 $\rightarrow$ 👴, 阿婆 $\rightarrow$ 👵, others $\rightarrow$ 👦.
-
-2. **Progression Memory**:
-   - Selecting a profile locks their stage level progress, modifying the start button: *「開始戰鬥 (進度: 第 X 關)」*.
-   - Battle results, scores, and completion history are stored per profile.
-
----
-
-## ⚙️ Gameplay Mechanics
-
-1. **Random 10-out-of-20 Selector**:
-   - When a battle starts, `shuffleArray()` shuffles the stage's 20-question pool.
-   - The first 10 questions are sliced and set as the active questions.
-
-2. **Dynamic Option Shuffling**:
-   - Every time a question is loaded, the 4 answer choices are dynamically shuffled.
-   - The index of the correct answer is recalculated dynamically in memory.
-   - This ensures options are completely randomized and the correct answer is evenly distributed across A, B, C, D (25% probability each), preventing any pattern concentration.
+### 3. Frictionless Group Code Sync
+- Players can enter a custom Group Code (e.g. `朱家班` or `1234`) and click **「同步資料」** to sync their profiles and scores under that specific group.
+- **Offline / Local Mode**: If no Firebase credentials are configured in the code, the game displays a warning and automatically falls back to single-device LocalStorage, keeping the game fully playable.
 
 ---
 
 ## 📁 Source Files Updated
-- **[index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html)** - Imported Firebase Compat SDKs, added Group Code sync inputs.
-- **[index.css](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.css)** - Added style rules for `.sync-group-panel` and associated elements.
-- **[app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js)** - Initialized Firebase, rewrote load/save algorithms to bridge LocalStorage and Firestore under a Group Code document tree.
+- **[index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html)** - Restructured profile management into a split grid layout with a leaderboard container.
+- **[index.css](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.css)** - Added layout and aesthetic styles for the leaderboard panel, rank items, and gold/silver/bronze badges.
+- **[app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js)** - Integrated `/global_profiles` database transactions, added `loadLeaderboard()`, and updated state transition hooks to redraw rankings.

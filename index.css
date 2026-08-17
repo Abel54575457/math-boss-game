@@ -1354,3 +1354,154 @@ body {
 .sync-status-msg.error {
     color: var(--danger);
 }
+
+/* Split Layout for profile section */
+.grid-split {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.split-left {
+    width: 100%;
+}
+
+.split-right {
+    width: 100%;
+}
+
+/* Leaderboard Panel styling */
+.leaderboard-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.01);
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.leaderboard-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.leaderboard-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.leaderboard-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateX(3px);
+}
+
+/* Rank badges */
+.rank-badge {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.leaderboard-item.rank-1 .rank-badge {
+    background: linear-gradient(135deg, #ffe066, #f5b041);
+    color: #000;
+    box-shadow: 0 0 10px rgba(245, 176, 65, 0.6);
+}
+
+.leaderboard-item.rank-2 .rank-badge {
+    background: linear-gradient(135deg, #e5e8e8, #bdc3c7);
+    color: #000;
+    box-shadow: 0 0 10px rgba(189, 195, 199, 0.4);
+}
+
+.leaderboard-item.rank-3 .rank-badge {
+    background: linear-gradient(135deg, #edbb99, #dc7633);
+    color: #000;
+    box-shadow: 0 0 10px rgba(220, 118, 51, 0.4);
+}
+
+/* Leaderboard contents */
+.leaderboard-avatar {
+    font-size: 1.5rem;
+}
+
+.leaderboard-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.leaderboard-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.leaderboard-name {
+    font-weight: 700;
+    color: #fff;
+}
+
+.leaderboard-group {
+    font-size: 0.75rem;
+    color: var(--neon-cyan);
+    background: rgba(0, 240, 255, 0.08);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+.leaderboard-progress {
+    font-family: 'Orbitron', 'Noto Sans TC', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--neon-green);
+    text-shadow: 0 0 4px var(--neon-green-glow);
+}
+
+.leaderboard-loading, .leaderboard-empty {
+    text-align: center;
+    padding: 30px 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Responsive query for split grid */
+@media (max-width: 850px) {
+    .grid-split {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}

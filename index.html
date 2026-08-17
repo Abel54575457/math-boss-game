@@ -36,47 +36,58 @@
                 </p>
 
                 <!-- Profile Management Section -->
-                <div class="profile-section">
-                    <!-- Firebase Group Code Sync Header/Input -->
-                    <div class="sync-group-panel">
-                        <span class="sync-title">🌐 雲端同步代碼：</span>
-                        <div class="sync-input-row">
-                            <input type="text" id="sync-group-code" placeholder="輸入同家族/班級代碼 (選填)" maxlength="15">
-                            <button id="btn-sync-group" class="btn-small secondary">同步資料</button>
+                <div class="profile-section grid-split">
+                    <!-- Left Column: User Selection -->
+                    <div class="split-left">
+                        <!-- Firebase Group Code Sync Header/Input -->
+                        <div class="sync-group-panel">
+                            <span class="sync-title">🌐 雲端同步代碼：</span>
+                            <div class="sync-input-row">
+                                <input type="text" id="sync-group-code" placeholder="輸入同家族/班級代碼 (選填)" maxlength="15">
+                                <button id="btn-sync-group" class="btn-small secondary">同步資料</button>
+                            </div>
+                            <span id="sync-status" class="sync-status-msg"></span>
                         </div>
-                        <span id="sync-status" class="sync-status-msg"></span>
+
+                        <h3 class="section-title">👤 選擇勇者角色：</h3>
+                        <div class="profiles-grid" id="profiles-grid">
+                            <!-- Profile cards will be generated dynamically -->
+                        </div>
+                        
+                        <!-- Create Profile Form -->
+                        <div id="profile-form-container" class="profile-form-container glass hidden">
+                            <h4>✨ 登記新勇者</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="profile-name">勇者姓名</label>
+                                    <input type="text" id="profile-name" placeholder="請輸入姓名（例如：小華）" maxlength="8">
+                                </div>
+                                <div class="form-group">
+                                    <label for="profile-order">出生順序</label>
+                                    <select id="profile-order">
+                                        <option value="老大">老大 (第一個孩子)</option>
+                                        <option value="老二">老二 (第二個孩子)</option>
+                                        <option value="老三">老三 (第三個孩子)</option>
+                                        <option value="老四">老四 (第四個孩子)</option>
+                                        <option value="老五">老五 (第五個孩子)</option>
+                                        <option value="老六">老六 (第六個孩子)</option>
+                                        <option value="阿公">阿公</option>
+                                        <option value="阿婆">阿婆</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button id="btn-submit-profile" class="btn-small primary">建立角色</button>
+                                <button id="btn-cancel-profile" class="btn-small secondary">取消</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <h3 class="section-title">👤 選擇勇者角色：</h3>
-                    <div class="profiles-grid" id="profiles-grid">
-                        <!-- Profile cards will be generated dynamically -->
-                    </div>
-                    
-                    <!-- Create Profile Form -->
-                    <div id="profile-form-container" class="profile-form-container glass hidden">
-                        <h4>✨ 登記新勇者</h4>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="profile-name">勇者姓名</label>
-                                <input type="text" id="profile-name" placeholder="請輸入姓名（例如：小華）" maxlength="8">
-                            </div>
-                            <div class="form-group">
-                                <label for="profile-order">出生順序</label>
-                                <select id="profile-order">
-                                    <option value="老大">老大 (第一個孩子)</option>
-                                    <option value="老二">老二 (第二個孩子)</option>
-                                    <option value="老三">老三 (第三個孩子)</option>
-                                    <option value="老四">老四 (第四個孩子)</option>
-                                    <option value="老五">老五 (第五個孩子)</option>
-                                    <option value="老六">老六 (第六個孩子)</option>
-                                    <option value="阿公">阿公</option>
-                                    <option value="阿婆">阿婆</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button id="btn-submit-profile" class="btn-small primary">建立角色</button>
-                            <button id="btn-cancel-profile" class="btn-small secondary">取消</button>
+                    <!-- Right Column: Global Leaderboard -->
+                    <div class="split-right leaderboard-panel">
+                        <h3 class="section-title">🏆 勇者全球排行榜</h3>
+                        <div class="leaderboard-list" id="leaderboard-list">
+                            <div class="leaderboard-loading">載入排行中...</div>
                         </div>
                     </div>
                 </div>
