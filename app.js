@@ -242,19 +242,8 @@ let profiles = [];
 let activeProfileId = null;
 
 // Profile DOM References
-const nameLoginContainer = document.getElementById('name-login-container');
 const loginNameInput = document.getElementById('login-name-input');
-const btnLoginSubmit = document.getElementById('btn-login-submit');
 const loginStatusMsg = document.getElementById('login-status-msg');
-
-const activeHeroContainer = document.getElementById('active-hero-container');
-const activeHeroCard = document.getElementById('active-hero-card');
-const btnSwitchHero = document.getElementById('btn-switch-hero');
-
-const registerHeroContainer = document.getElementById('register-hero-container');
-const profileOrderSelect = document.getElementById('profile-order');
-const btnRegisterSubmit = document.getElementById('btn-register-submit');
-const btnRegisterCancel = document.getElementById('btn-register-cancel');
 
 // Modals
 
@@ -283,34 +272,14 @@ function init() {
 
 
     // Event Listeners
-    btnStartGame.addEventListener('click', () => {
-        const activeProfile = profiles.find(p => p.id === activeProfileId);
-        if (activeProfile) {
-            const targetStage = Math.min(activeProfile.unlockedStageIndex, stages.length - 1);
-            startBattle(targetStage);
-        }
-    });
-
-    // Profile Actions (Name Login & Register)
-    if (btnLoginSubmit) {
-        btnLoginSubmit.addEventListener('click', handleNameLogin);
-    }
-    if (btnSwitchHero) {
-        btnSwitchHero.addEventListener('click', handleSwitchHero);
-    }
-    if (btnRegisterSubmit) {
-        btnRegisterSubmit.addEventListener('click', handleRegisterSubmit);
-    }
-    if (btnRegisterCancel) {
-        btnRegisterCancel.addEventListener('click', handleRegisterCancel);
+    if (btnStartGame) {
+        btnStartGame.addEventListener('click', handleStartGame);
     }
 
     // Load active profile from local storage auto-save
     const savedHeroName = localStorage.getItem('math_boss_active_hero_name');
-    if (savedHeroName) {
-        loadProfileByName(savedHeroName);
-    } else {
-        showLoginPanel();
+    if (savedHeroName && loginNameInput) {
+        loginNameInput.value = savedHeroName;
     }
 
     // Load global leaderboard
@@ -713,6 +682,185 @@ function updateHpBars() {
     bossHpBar.style.width = `${bossPct}%`;
 }
 
+function handleStartGame() {
+    if (!loginNameInput) return;
+    const name = loginNameInput.value.trim();
+    if (!name) {
+        alert('請輸入您的勇者姓名！');
+        return;
+    }
+
+    localStorage.setItem('math_boss_active_hero_name', name);
+    loadAndStart(name);
+}
+
+function loadAndStart(name) {
+    if (isFirebaseActive) {
+        if (loginStatusMsg) {
+            loginStatusMsg.textContent = "正在連線雲端存檔...";
+            loginStatusMsg.classList.remove('error');
+        }
+        
+        db.collection('global_profiles').doc(name).get()
+            .then(doc => {
+                if (doc.exists) {
+                    const p = doc.data();
+                    if (p) {
+                        p.id = p.id || p.name || doc.id || name;
+                        profiles = [p];
+                        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+                        activeProfileId = p.id;
+                        
+                        if (loginStatusMsg) loginStatusMsg.textContent = "";
+                        const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
+                        startBattle(targetStage);
+                    }
+                } else {
+                    // Profile does not exist, auto-create
+                    autoRegisterAndStart(name);
+                }
+            })
+            .catch(error => {
+                console.error("Firestore load failed, falling back to LocalStorage:", error);
+                if (loginStatusMsg) {
+                    loginStatusMsg.textContent = "⚠️ 雲端讀取失敗，改用本機快取開戰。";
+                    loginStatusMsg.classList.add('error');
+                }
+                loadAndStartFromLocal(name);
+            });
+    } else {
+        loadAndStartFromLocal(name);
+    }
+}
+
+function loadAndStartFromLocal(name) {
+    const saved = localStorage.getItem('math_boss_profiles');
+    let localProfiles = [];
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                localProfiles = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+                localProfiles = [parsed];
+            }
+        } catch (e) {
+            localProfiles = [];
+        }
+    }
+
+    const p = localProfiles.find(x => x && x.name === name);
+    if (p) {
+        p.id = p.id || p.name || name;
+        profiles = [p];
+        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+        activeProfileId = p.id;
+        
+        const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
+        startBattle(targetStage);
+    } else {
+        // Auto register local
+        const newProfile = {
+            id: name,
+            name: name,
+            order: '老大',
+            unlockedStageIndex: 0,
+            history: []
+        };
+        profiles = [newProfile];
+        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+        activeProfileId = newProfile.id;
+        startBattle(0);
+    }
+}
+
+function autoRegisterAndStart(name) {
+    const newProfile = {
+        id: name,
+        name: name,
+        order: '老大',
+        unlockedStageIndex: 0,
+        history: []
+    };
+
+    profiles = [newProfile];
+    localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+    activeProfileId = newProfile.id;
+
+    if (isFirebaseActive) {
+        db.collection('global_profiles').doc(name).set(newProfile)
+            .then(() => {
+                console.log("Registered profile to cloud");
+                loadLeaderboard();
+            })
+            .catch(err => {
+                console.error("Firestore register write failed:", err);
+            });
+    }
+
+    if (loginStatusMsg) loginStatusMsg.textContent = "";
+    startBattle(0);
+}
+
+function loadLeaderboard() {
+    if (!leaderboardList) return;
+    
+    if (!isFirebaseActive) {
+        leaderboardList.innerHTML = '<div class="leaderboard-empty">⚠️ 未設定雲端資料庫，無法載入排行榜。</div>';
+        return;
+    }
+    
+    leaderboardList.innerHTML = '<div class="leaderboard-loading">載入排行中...</div>';
+    
+    db.collection('global_profiles')
+        .orderBy('unlockedStageIndex', 'desc')
+        .limit(10)
+        .get()
+        .then(querySnapshot => {
+            leaderboardList.innerHTML = '';
+            
+            if (querySnapshot.empty) {
+                leaderboardList.innerHTML = '<div class="leaderboard-empty">🏆 目前尚無排行榜資料。第一個挑戰吧！</div>';
+                return;
+            }
+            
+            let rank = 1;
+            querySnapshot.forEach(doc => {
+                const p = doc.data();
+                
+                let emoji = '👦';
+                if (p.order === '老大') emoji = '👑';
+                else if (p.order === '老二') emoji = '🥈';
+                else if (p.order === '老三') emoji = '🥉';
+                else if (p.order === '阿公') emoji = '👴';
+                else if (p.order === '阿婆') emoji = '👵';
+                
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+                const stageNum = p.unlockedStageIndex + 1;
+                
+                const item = document.createElement('div');
+                item.className = `leaderboard-item ${rankClass}`;
+                item.innerHTML = `
+                    <div class="rank-badge">${rankDisplay}</div>
+                    <div class="leaderboard-avatar">${emoji}</div>
+                    <div class="leaderboard-details">
+                        <div class="leaderboard-name-row">
+                            <span class="leaderboard-name">${escapeHTML(p.name)}</span>
+                        </div>
+                    </div>
+                    <div class="leaderboard-progress">第 ${stageNum} 關</div>
+                `;
+                leaderboardList.appendChild(item);
+                rank++;
+            });
+        })
+        .catch(err => {
+            console.error("Failed to load leaderboard:", err);
+            leaderboardList.innerHTML = '<div class="leaderboard-empty">❌ 排行榜載入失敗。</div>';
+        });
+}
+
 function updateComboUI() {
     comboCountEl.textContent = comboCount;
     resetComboDots();
@@ -795,329 +943,9 @@ function closeModal(modal) {
     modal.classList.remove('active');
 }
 
-function showLoginPanel() {
-    if (nameLoginContainer) nameLoginContainer.classList.remove('hidden');
-    if (activeHeroContainer) activeHeroContainer.classList.add('hidden');
-    if (registerHeroContainer) registerHeroContainer.classList.add('hidden');
-    if (loginNameInput) {
-        loginNameInput.value = '';
-        loginNameInput.focus();
-    }
-    if (loginStatusMsg) loginStatusMsg.textContent = '';
-}
 
-function handleNameLogin() {
-    if (!loginNameInput) return;
-    const name = loginNameInput.value.trim();
-    if (!name) {
-        alert('請輸入勇者姓名！');
-        return;
-    }
-    loadProfileByName(name);
-}
 
-function loadProfileByName(name) {
-    if (isFirebaseActive) {
-        if (loginStatusMsg) {
-            loginStatusMsg.textContent = "正在同步雲端存檔...";
-            loginStatusMsg.classList.remove('error');
-        }
-        
-        db.collection('global_profiles').doc(name).get()
-            .then(doc => {
-                if (doc.exists) {
-                    const p = doc.data();
-                    if (p) {
-                        p.id = p.id || p.name || doc.id || name;
-                        profiles = [p];
-                        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-                        activeProfileId = p.id;
-                        localStorage.setItem('math_boss_active_hero_name', name);
-                        
-                        if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
-                        if (registerHeroContainer) registerHeroContainer.classList.add('hidden');
-                        if (activeHeroContainer) activeHeroContainer.classList.remove('hidden');
-                        
-                        renderActiveHeroCard();
-                        updateStartButtonState();
-                        if (loginStatusMsg) loginStatusMsg.textContent = "";
-                    }
-                } else {
-                    // Profile does not exist, go to registration select order
-                    if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
-                    if (registerHeroContainer) registerHeroContainer.classList.remove('hidden');
-                    if (activeHeroContainer) activeHeroContainer.classList.add('hidden');
-                    if (loginStatusMsg) loginStatusMsg.textContent = "";
-                }
-            })
-            .catch(error => {
-                console.error("Firestore load failed, checking local backup:", error);
-                loadProfileByNameFallback(name);
-                if (loginStatusMsg) {
-                    loginStatusMsg.textContent = "⚠️ 雲端讀取失敗，載入本機備份存檔。";
-                    loginStatusMsg.classList.add('error');
-                }
-            });
-    } else {
-        loadProfileByNameFallback(name);
-    }
-}
 
-function loadProfileByNameFallback(name) {
-    loadProfileFromLocalByName(name);
-}
-
-function loadProfileFromLocalByName(name) {
-    const saved = localStorage.getItem('math_boss_profiles');
-    let localProfiles = [];
-    if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed)) {
-                localProfiles = parsed;
-            } else if (parsed && typeof parsed === 'object') {
-                localProfiles = [parsed];
-            }
-        } catch (e) {
-            localProfiles = [];
-        }
-    }
-    
-    const p = localProfiles.find(x => x.name === name);
-    if (p) {
-        profiles = [p];
-        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-        activeProfileId = p.id;
-        localStorage.setItem('math_boss_active_hero_name', name);
-        
-        if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
-        if (registerHeroContainer) registerHeroContainer.classList.add('hidden');
-        if (activeHeroContainer) activeHeroContainer.classList.remove('hidden');
-        
-        renderActiveHeroCard();
-        updateStartButtonState();
-    } else {
-        // Show registration
-        if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
-        if (registerHeroContainer) registerHeroContainer.classList.remove('hidden');
-        if (activeHeroContainer) activeHeroContainer.classList.add('hidden');
-    }
-}
-
-function handleRegisterSubmit() {
-    if (!loginNameInput) return;
-    const name = loginNameInput.value.trim();
-    const order = profileOrderSelect ? profileOrderSelect.value : '老大';
-
-    if (!name) {
-        alert('請輸入姓名！');
-        return;
-    }
-
-    const newProfile = {
-        id: name,
-        name: name,
-        order: order,
-        unlockedStageIndex: 0,
-        history: []
-    };
-
-    profiles = [newProfile];
-    localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-    activeProfileId = newProfile.id;
-    localStorage.setItem('math_boss_active_hero_name', name);
-
-    // Save to Firestore if active
-    if (isFirebaseActive) {
-        db.collection('global_profiles').doc(name).set(newProfile)
-            .then(() => {
-                console.log("Profile successfully registered to Cloud Firestore");
-                loadLeaderboard();
-            })
-            .catch(err => {
-                console.error("Firestore register write failed:", err);
-            });
-    }
-
-    if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
-    if (registerHeroContainer) registerHeroContainer.classList.add('hidden');
-    if (activeHeroContainer) activeHeroContainer.classList.remove('hidden');
-
-    renderActiveHeroCard();
-    updateStartButtonState();
-}
-
-function handleRegisterCancel() {
-    showLoginPanel();
-}
-
-function handleSwitchHero() {
-    activeProfileId = null;
-    localStorage.removeItem('math_boss_active_hero_name');
-    showLoginPanel();
-    updateStartButtonState();
-}
-
-function renderActiveHeroCard() {
-    if (!activeHeroCard || !activeProfileId) return;
-    const p = profiles.find(x => x.id === activeProfileId);
-    if (!p) return;
-
-    let emoji = '👦';
-    if (p.order === '老大') emoji = '👑';
-    else if (p.order === '老二') emoji = '🥈';
-    else if (p.order === '老三') emoji = '🥉';
-    else if (p.order === '阿公') emoji = '👴';
-    else if (p.order === '阿婆') emoji = '👵';
-
-    const displayStage = p.unlockedStageIndex + 1;
-
-    activeHeroCard.innerHTML = `
-        <div class="hero-emoji">${emoji}</div>
-        <div class="hero-info">
-            <div class="hero-name">${escapeHTML(p.name)}</div>
-            <div class="hero-meta">
-                <span class="hero-order">${escapeHTML(p.order)}</span>
-                <span class="hero-progress">目前關卡: 第 ${displayStage} 關</span>
-            </div>
-        </div>
-    `;
-}
-
-function loadLeaderboard() {
-    if (!leaderboardList) return;
-    
-    if (!isFirebaseActive) {
-        leaderboardList.innerHTML = '<div class="leaderboard-empty">⚠️ 未設定雲端資料庫，無法載入排行榜。</div>';
-        return;
-    }
-    
-    leaderboardList.innerHTML = '<div class="leaderboard-loading">載入排行中...</div>';
-    
-    db.collection('global_profiles')
-        .orderBy('unlockedStageIndex', 'desc')
-        .limit(10)
-        .get()
-        .then(querySnapshot => {
-            leaderboardList.innerHTML = '';
-            
-            if (querySnapshot.empty) {
-                leaderboardList.innerHTML = '<div class="leaderboard-empty">🏆 目前尚無排行榜資料。第一個挑戰吧！</div>';
-                return;
-            }
-            
-            let rank = 1;
-            querySnapshot.forEach(doc => {
-                const p = doc.data();
-                
-                let emoji = '👦';
-                if (p.order === '老大') emoji = '👑';
-                else if (p.order === '老二') emoji = '🥈';
-                else if (p.order === '老三') emoji = '🥉';
-                else if (p.order === '阿公') emoji = '👴';
-                else if (p.order === '阿婆') emoji = '👵';
-                
-                const rankClass = rank <= 3 ? `rank-${rank}` : '';
-                const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
-                const stageNum = p.unlockedStageIndex + 1;
-                
-                const item = document.createElement('div');
-                item.className = `leaderboard-item ${rankClass}`;
-                item.innerHTML = `
-                    <div class="rank-badge">${rankDisplay}</div>
-                    <div class="leaderboard-avatar">${emoji}</div>
-                    <div class="leaderboard-details">
-                        <div class="leaderboard-name-row">
-                            <span class="leaderboard-name">${escapeHTML(p.name)}</span>
-                        </div>
-                    </div>
-                    <div class="leaderboard-progress">第 ${stageNum} 關</div>
-                `;
-                leaderboardList.appendChild(item);
-                rank++;
-            });
-        })
-        .catch(err => {
-            console.error("Failed to load leaderboard:", err);
-            leaderboardList.innerHTML = '<div class="leaderboard-empty">❌ 排行榜載入失敗。</div>';
-        });
-}
-
-function updateStartButtonState() {
-    if (activeProfileId) {
-        const activeProfile = profiles.find(p => p.id === activeProfileId);
-        const stageNum = activeProfile.unlockedStageIndex + 1;
-        btnStartGame.disabled = false;
-        btnStartGame.textContent = `開始戰鬥 (進度: 第 ${stageNum} 關)`;
-    } else {
-        btnStartGame.disabled = true;
-        unlockedStageIndex: 0,
-        history: []
-    };
-
-    profiles.push(newProfile);
-    localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-    
-    // Automatically select the newly created profile
-    activeProfileId = newProfile.id;
-    localStorage.setItem('math_boss_active_profile_id', newProfile.id);
-
-    // Save to Firestore if active
-    if (isFirebaseActive && groupCode) {
-        db.collection('global_profiles').doc(newProfile.id).set(newProfile)
-            .then(() => {
-                console.log("Profile successfully created in Firestore");
-                loadLeaderboard(); // refresh leaderboard
-            })
-            .catch(err => {
-                console.error("Firestore write failed:", err);
-            });
-    }
-
-    toggleProfileForm(false);
-    renderProfiles();
-    updateStartButtonState();
-}
-
-function saveActiveProfileProgress(hasPassed) {
-    if (!activeProfileId) return;
-    const activeProfile = profiles.find(p => p.id === activeProfileId);
-    if (!activeProfile) return;
-
-    if (hasPassed) {
-        // If the cleared stage is the current unlocked stage, unlock the next one!
-        if (currentStageIndex === activeProfile.unlockedStageIndex) {
-            activeProfile.unlockedStageIndex++;
-        }
-        
-        // Add to history
-        if (!activeProfile.history) activeProfile.history = [];
-        activeProfile.history.push({
-            stage: stages[currentStageIndex].stage,
-            bossName: stages[currentStageIndex].bossName,
-            correctCount: correctAnswersCount,
-            totalCount: totalAnswersCount,
-            date: new Date().toLocaleDateString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' })
-        });
-
-        // Save profiles locally
-        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-        renderProfiles();
-
-        // Save to Firestore if active
-        const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
-        if (isFirebaseActive && groupCode) {
-            db.collection('global_profiles').doc(activeProfile.id).set(activeProfile)
-                .then(() => {
-                    console.log("Progress successfully updated in Firestore");
-                    loadLeaderboard(); // refresh leaderboard
-                })
-                .catch(err => {
-                    console.error("Firestore progress write failed:", err);
-                });
-        }
-    }
-}
 
 function escapeHTML(str) {
     return str.replace(/[&<>'"]/g, 
