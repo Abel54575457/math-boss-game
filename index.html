@@ -42,10 +42,16 @@
                         <div class="name-login-container">
                             <h3 class="section-title">👤 勇者登入</h3>
                             <div class="login-input-stack">
-                                <input type="text" id="login-name-input" placeholder="請輸入您的勇者姓名 (例如：小華)" maxlength="8">
-                                <input type="password" id="login-password-input" placeholder="請輸入密碼 (首次登入即設定此密碼)" maxlength="16">
+                                <div class="input-group">
+                                    <label class="input-label" for="login-name-input">👤 勇者姓名 (ID)</label>
+                                    <input type="text" id="login-name-input" placeholder="請輸入您的姓名 (例如：小華)" maxlength="8">
+                                </div>
+                                <div class="input-group">
+                                    <label class="input-label" for="login-password-input">🔑 勇者密碼 (Password)</label>
+                                    <input type="password" id="login-password-input" placeholder="首次登入輸入即為設定密碼" maxlength="16">
+                                </div>
                             </div>
-                            <p class="login-hint" style="font-size: 0.85rem; color: #a0aec0; margin-top: 8px; margin-bottom: 5px; text-align: left; opacity: 0.8;">⚠️ 請記得您輸入的姓名與密碼，以便下次登入繼續挑戰！</p>
+                            <p class="login-hint" style="font-size: 0.85rem; color: #a0aec0; margin-top: 12px; margin-bottom: 5px; text-align: left; opacity: 0.8;">⚠️ 請記得您輸入的姓名與密碼，以便下次登入繼續挑戰！</p>
                             <span id="login-status-msg" class="sync-status-msg"></span>
                         </div>
 
