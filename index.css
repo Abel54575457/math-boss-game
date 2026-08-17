@@ -1514,13 +1514,14 @@ body {
     margin-bottom: 20px;
 }
 
-.login-input-row {
+.login-input-stack {
     display: flex;
+    flex-direction: column;
     gap: 12px;
 }
 
-.login-input-row input {
-    flex: 1;
+.login-input-stack input {
+    width: 100%;
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -1529,16 +1530,12 @@ body {
     font-size: 1.05rem;
     outline: none;
     transition: all var(--trans-fast);
+    box-sizing: border-box;
 }
 
-.login-input-row input:focus {
+.login-input-stack input:focus {
     border-color: var(--neon-cyan);
     box-shadow: 0 0 10px var(--neon-cyan-glow);
-}
-
-.login-input-row button {
-    padding: 12px 24px;
-    font-size: 1rem;
 }
 
 /* Active Hero display styles */

@@ -243,6 +243,7 @@ let activeProfileId = null;
 
 // Profile DOM References
 const loginNameInput = document.getElementById('login-name-input');
+const loginPasswordInput = document.getElementById('login-password-input');
 const loginStatusMsg = document.getElementById('login-status-msg');
 
 // Modals
@@ -683,18 +684,20 @@ function updateHpBars() {
 }
 
 function handleStartGame() {
-    if (!loginNameInput) return;
+    if (!loginNameInput || !loginPasswordInput) return;
     const name = loginNameInput.value.trim();
-    if (!name) {
-        alert('請輸入您的勇者姓名！');
+    const password = loginPasswordInput.value.trim();
+    
+    if (!name || !password) {
+        alert('請輸入您的勇者姓名與密碼！');
         return;
     }
 
     localStorage.setItem('math_boss_active_hero_name', name);
-    loadAndStart(name);
+    loadAndStart(name, password);
 }
 
-function loadAndStart(name) {
+function loadAndStart(name, password) {
     if (isFirebaseActive) {
         if (loginStatusMsg) {
             loginStatusMsg.textContent = "正在連線雲端存檔...";
@@ -706,18 +709,32 @@ function loadAndStart(name) {
                 if (doc.exists) {
                     const p = doc.data();
                     if (p) {
-                        p.id = p.id || p.name || doc.id || name;
-                        profiles = [p];
-                        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-                        activeProfileId = p.id;
+                        // Check password (if profile has no password field, auto-bind the entered one)
+                        if (!p.password) {
+                            p.password = password;
+                            db.collection('global_profiles').doc(name).update({ password: password })
+                                .catch(e => console.error("Auto-bind password failed:", e));
+                        }
                         
-                        if (loginStatusMsg) loginStatusMsg.textContent = "";
-                        const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
-                        startBattle(targetStage);
+                        if (p.password === password) {
+                            p.id = p.id || p.name || doc.id || name;
+                            profiles = [p];
+                            localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+                            activeProfileId = p.id;
+                            
+                            if (loginStatusMsg) loginStatusMsg.textContent = "";
+                            const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
+                            startBattle(targetStage);
+                        } else {
+                            if (loginStatusMsg) {
+                                loginStatusMsg.textContent = "❌ 密碼錯誤，請重新輸入！";
+                                loginStatusMsg.classList.add('error');
+                            }
+                        }
                     }
                 } else {
                     // Profile does not exist, auto-create
-                    autoRegisterAndStart(name);
+                    autoRegisterAndStart(name, password);
                 }
             })
             .catch(error => {
@@ -726,14 +743,14 @@ function loadAndStart(name) {
                     loginStatusMsg.textContent = "⚠️ 雲端讀取失敗，改用本機快取開戰。";
                     loginStatusMsg.classList.add('error');
                 }
-                loadAndStartFromLocal(name);
+                loadAndStartFromLocal(name, password);
             });
     } else {
-        loadAndStartFromLocal(name);
+        loadAndStartFromLocal(name, password);
     }
 }
 
-function loadAndStartFromLocal(name) {
+function loadAndStartFromLocal(name, password) {
     const saved = localStorage.getItem('math_boss_profiles');
     let localProfiles = [];
     if (saved) {
@@ -751,18 +768,30 @@ function loadAndStartFromLocal(name) {
 
     const p = localProfiles.find(x => x && x.name === name);
     if (p) {
-        p.id = p.id || p.name || name;
-        profiles = [p];
-        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-        activeProfileId = p.id;
+        if (!p.password) {
+            p.password = password;
+        }
         
-        const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
-        startBattle(targetStage);
+        if (p.password === password) {
+            p.id = p.id || p.name || name;
+            profiles = [p];
+            localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+            activeProfileId = p.id;
+            
+            const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
+            startBattle(targetStage);
+        } else {
+            if (loginStatusMsg) {
+                loginStatusMsg.textContent = "❌ 密碼錯誤，請重新輸入！";
+                loginStatusMsg.classList.add('error');
+            }
+        }
     } else {
         // Auto register local
         const newProfile = {
             id: name,
             name: name,
+            password: password,
             order: '老大',
             unlockedStageIndex: 0,
             history: []
@@ -774,10 +803,11 @@ function loadAndStartFromLocal(name) {
     }
 }
 
-function autoRegisterAndStart(name) {
+function autoRegisterAndStart(name, password) {
     const newProfile = {
         id: name,
         name: name,
+        password: password,
         order: '老大',
         unlockedStageIndex: 0,
         history: []
@@ -790,7 +820,7 @@ function autoRegisterAndStart(name) {
     if (isFirebaseActive) {
         db.collection('global_profiles').doc(name).set(newProfile)
             .then(() => {
-                console.log("Registered profile to cloud");
+                console.log("Registered profile to cloud with password");
                 loadLeaderboard();
             })
             .catch(err => {

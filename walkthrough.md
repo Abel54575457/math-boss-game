@@ -1,6 +1,6 @@
-# Walkthrough: Math Boss Battle Game (Frictionless Start Edition)
+# Walkthrough: Math Boss Battle Game (Account Password Edition)
 
-We have successfully simplified the game start screen to the ultimate level. There are **no more character cards, no registration dropdowns, and no switch menus**. 
+We have successfully added **姓名與密碼雙欄位驗證 (Name & Password Authentication)**. 
 
 ---
 
@@ -21,21 +21,22 @@ Use the carousel below to view the cartoonized premium illustration card avatars
 
 ---
 
-## 🕹️ Frictionless Name-Only Flow
+## 🔐 Name & Password Authentication
 
-### 1. Direct Start Battle
-- **Single Input & Button**: The start screen now features only a **姓名輸入框 (Name Input)** and a **「開始戰鬥」 (Start Battle)** button.
-- **Frictionless Connect**:
-  - **Returning Player**: Type their name (or it will auto-fill from the last session), click **「開始戰鬥」**, and the game immediately loads their cloud/local stage index and starts the battle!
-  - **New Player**: Type a new name, click **「開始戰鬥」**, and the system **automatically** registers the profile in the background, launching Stage 1 instantly. No popups or forms!
-- **Switch Player**: To play as a different player, simply change the text in the input box on the start screen.
+### 1. Unified Login/Register
+- The login panel has two fields: **「勇者姓名」** and **「輸入密碼」**.
+- **首次登入 (First Login)**: If the name does not exist, the system **automatically registers** the name in the cloud database with the password entered in the password field.
+- **後續登入 (Subsequent Logins)**: If the name already exists, the system compares the typed password with the stored password.
+  - **Correct Password**: Logs in instantly and starts the game at their saved level.
+  - **Wrong Password**: Shows error: `❌ 密碼錯誤，請重新輸入！` and blocks login.
 
-### 2. Global Leaderboard
-- Displays the global top 10 rankings sorted by unlocked stages.
-- Ranks are dynamically synced from Firestore and rendered with holographic medals (🥇, 🥈, 🥉).
+### 2. Auto-Remember
+- The browser remembers the last used Name and automatically pre-fills it on the login screen.
+- Players only need to enter their password to quickly log in and resume playing.
 
 ---
 
 ## 📁 Source Files Updated
-- **[index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html)** - Removed character selection wrappers and registration forms, leaving only the name input and Start button.
-- **[app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js)** - Cleaned up obsolete event bindings and implemented background auto-creation and instant battle routing.
+- **[index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html)** - Updated the input layout to stack Name and Password inputs vertically.
+- **[index.css](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.css)** - Added vertical column layout rules for `.login-input-stack`.
+- **[app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js)** - Implemented password comparison checks and added automatic fallback updates for legacy users.
