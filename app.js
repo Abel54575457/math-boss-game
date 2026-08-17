@@ -3,6 +3,11 @@ window.onerror = function(message, source, lineno, colno, error) {
     return false;
 };
 
+window.onunhandledrejection = function(event) {
+    console.error("Unhandled promise rejection:", event.reason);
+    alert("❌ 偵測到未處理的 Promise 錯誤:\n原因: " + (event.reason ? (event.reason.message || event.reason) : "未知錯誤"));
+};
+
 // Firebase Configuration - Replace with your own project configuration from Firebase Console!
 const firebaseConfig = {
   apiKey: "AIzaSyBkYIxsmK9qqbfFSoxzoUFSlAo0uy1E4jc",
@@ -678,6 +683,17 @@ function updateHpBars() {
     bossHpBar.style.width = `${bossPct}%`;
 }
 
+// Promise timeout utility
+function promiseTimeout(promise, ms, errorMsg) {
+    let timeout = new Promise((resolve, reject) => {
+        let id = setTimeout(() => {
+            clearTimeout(id);
+            reject(new Error(errorMsg || "連線逾時，請檢查網路或資料庫設定。"));
+        }, ms);
+    });
+    return Promise.race([promise, timeout]);
+}
+
 function handleStartGame() {
     if (!loginNameInput || !loginPasswordInput) return;
     const name = loginNameInput.value.trim();
@@ -699,7 +715,11 @@ function loadAndStart(name, password) {
             loginStatusMsg.classList.remove('error');
         }
         
-        db.collection('global_profiles').doc(name).get()
+        promiseTimeout(
+            db.collection('global_profiles').doc(name).get(),
+            4000,
+            "雲端資料庫連線逾時"
+        )
             .then(doc => {
                 if (doc.exists) {
                     const p = doc.data();
@@ -734,8 +754,9 @@ function loadAndStart(name, password) {
             })
             .catch(error => {
                 console.error("Firestore load failed, falling back to LocalStorage:", error);
+                alert("⚠️ 雲端連線失敗 (" + error.message + ")，將切換為本機模式繼續。");
                 if (loginStatusMsg) {
-                    loginStatusMsg.textContent = "⚠️ 雲端讀取失敗，改用本機快取開戰。";
+                    loginStatusMsg.textContent = "⚠️ 雲端連線失敗，改用本機快取開戰。";
                     loginStatusMsg.classList.add('error');
                 }
                 loadAndStartFromLocal(name, password);
@@ -813,13 +834,18 @@ function autoRegisterAndStart(name, password) {
     activeProfileId = newProfile.id;
 
     if (isFirebaseActive) {
-        db.collection('global_profiles').doc(name).set(newProfile)
+        promiseTimeout(
+            db.collection('global_profiles').doc(name).set(newProfile),
+            4000,
+            "雲端註冊連線逾時"
+        )
             .then(() => {
                 console.log("Registered profile to cloud with password");
                 loadLeaderboard();
             })
             .catch(err => {
                 console.error("Firestore register write failed:", err);
+                alert("⚠️ 雲端註冊存檔失敗：" + err.message + "\n（將以本機模式繼續遊戲，進度將儲存在您的瀏覽器中）");
             });
     }
 
@@ -837,10 +863,14 @@ function loadLeaderboard() {
     
     leaderboardList.innerHTML = '<div class="leaderboard-loading">載入排行中...</div>';
     
-    db.collection('global_profiles')
-        .orderBy('unlockedStageIndex', 'desc')
-        .limit(10)
-        .get()
+    promiseTimeout(
+        db.collection('global_profiles')
+            .orderBy('unlockedStageIndex', 'desc')
+            .limit(10)
+            .get(),
+        4000,
+        "排行榜載入逾時"
+    )
         .then(querySnapshot => {
             leaderboardList.innerHTML = '';
             
@@ -882,7 +912,7 @@ function loadLeaderboard() {
         })
         .catch(err => {
             console.error("Failed to load leaderboard:", err);
-            leaderboardList.innerHTML = '<div class="leaderboard-empty">❌ 排行榜載入失敗。</div>';
+            leaderboardList.innerHTML = `<div class="leaderboard-empty">❌ 排行榜載入失敗 (${err.message})</div>`;
         });
 }
 
@@ -992,13 +1022,18 @@ function saveActiveProfileProgress(hasPassed) {
 
         // Save to Firestore if active
         if (isFirebaseActive) {
-            db.collection('global_profiles').doc(activeProfileId).set(activeProfile)
+            promiseTimeout(
+                db.collection('global_profiles').doc(activeProfileId).set(activeProfile),
+                4000,
+                "雲端進度同步逾時"
+            )
                 .then(() => {
                     console.log("Progress successfully updated in Firestore");
                     loadLeaderboard(); // refresh leaderboard
                 })
                 .catch(err => {
                     console.error("Firestore progress write failed:", err);
+                    alert("⚠️ 雲端進度同步失敗：" + err.message + "\n（您的最新進度已儲存於本機瀏覽器，請檢查網路或資料庫設定）");
                 });
         }
     }
