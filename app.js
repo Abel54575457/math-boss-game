@@ -732,6 +732,8 @@ function updateProgressBadges() {
     if (goalProgressEl) {
         goalProgressEl.textContent = `${correctAnswersCount}/8`;
     }
+}
+
 function resetComboDots() {
     for (let i = 0; i < comboDots.length; i++) {
         comboDots[i].classList.remove('active');
@@ -825,18 +827,21 @@ function loadProfileByName(name) {
             .then(doc => {
                 if (doc.exists) {
                     const p = doc.data();
-                    profiles = [p];
-                    localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
-                    activeProfileId = p.id;
-                    localStorage.setItem('math_boss_active_hero_name', name);
-                    
-                    if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
-                    if (registerHeroContainer) registerHeroContainer.classList.add('hidden');
-                    if (activeHeroContainer) activeHeroContainer.classList.remove('hidden');
-                    
-                    renderActiveHeroCard();
-                    updateStartButtonState();
-                    if (loginStatusMsg) loginStatusMsg.textContent = "";
+                    if (p) {
+                        p.id = p.id || p.name || doc.id || name;
+                        profiles = [p];
+                        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+                        activeProfileId = p.id;
+                        localStorage.setItem('math_boss_active_hero_name', name);
+                        
+                        if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
+                        if (registerHeroContainer) registerHeroContainer.classList.add('hidden');
+                        if (activeHeroContainer) activeHeroContainer.classList.remove('hidden');
+                        
+                        renderActiveHeroCard();
+                        updateStartButtonState();
+                        if (loginStatusMsg) loginStatusMsg.textContent = "";
+                    }
                 } else {
                     // Profile does not exist, go to registration select order
                     if (nameLoginContainer) nameLoginContainer.classList.add('hidden');
@@ -847,15 +852,19 @@ function loadProfileByName(name) {
             })
             .catch(error => {
                 console.error("Firestore load failed, checking local backup:", error);
-                loadProfileFromLocalByName(name);
+                loadProfileByNameFallback(name);
                 if (loginStatusMsg) {
                     loginStatusMsg.textContent = "⚠️ 雲端讀取失敗，載入本機備份存檔。";
                     loginStatusMsg.classList.add('error');
                 }
             });
     } else {
-        loadProfileFromLocalByName(name);
+        loadProfileByNameFallback(name);
     }
+}
+
+function loadProfileByNameFallback(name) {
+    loadProfileFromLocalByName(name);
 }
 
 function loadProfileFromLocalByName(name) {
@@ -863,7 +872,12 @@ function loadProfileFromLocalByName(name) {
     let localProfiles = [];
     if (saved) {
         try {
-            localProfiles = JSON.parse(saved);
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                localProfiles = parsed;
+            } else if (parsed && typeof parsed === 'object') {
+                localProfiles = [parsed];
+            }
         } catch (e) {
             localProfiles = [];
         }
