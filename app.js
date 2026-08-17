@@ -23,17 +23,35 @@ const firebaseConfig = {
 let db = null;
 let isFirebaseActive = false;
 
+function addDebugLog(msg) {
+    console.log("[DEBUG]", msg);
+    const box = document.getElementById('debug-log-box');
+    if (box) {
+        box.style.display = 'block';
+        const entry = document.createElement('div');
+        entry.style.marginBottom = '4px';
+        entry.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        entry.style.paddingBottom = '2px';
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        box.appendChild(entry);
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
 try {
     if (firebaseConfig && firebaseConfig.projectId && typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
         isFirebaseActive = true;
         console.log("Firebase initialized successfully!");
+        setTimeout(() => addDebugLog("Firebase 雲端資料庫初始化成功！"), 500);
     } else {
         console.log("Firebase is not configured or SDK not loaded. Operating in Local Mode.");
+        setTimeout(() => addDebugLog("⚠️ Firebase 未載入，切換為「本機模式」運作。"), 500);
     }
 } catch (error) {
     console.error("Firebase initialization failed:", error);
+    setTimeout(() => addDebugLog("❌ Firebase 初始化失敗：" + error.message), 500);
 }
 
 // Default configuration from user request
@@ -695,17 +713,21 @@ function promiseTimeout(promise, ms, errorMsg) {
 }
 
 function handleStartGame() {
-    if (!loginNameInput || !loginPasswordInput) return;
-    const name = loginNameInput.value.trim();
-    const password = loginPasswordInput.value.trim();
-    
-    if (!name || !password) {
-        alert('請輸入您的勇者姓名與密碼！');
-        return;
-    }
+    try {
+        if (!loginNameInput || !loginPasswordInput) return;
+        const name = loginNameInput.value.trim();
+        const password = loginPasswordInput.value.trim();
+        
+        if (!name || !password) {
+            alert('請輸入您的勇者姓名與密碼！');
+            return;
+        }
 
-    localStorage.setItem('math_boss_active_hero_name', name);
-    loadAndStart(name, password);
+        localStorage.setItem('math_boss_active_hero_name', name);
+        loadAndStart(name, password);
+    } catch (e) {
+        addDebugLog("❌ 登入按鈕點擊出錯: " + e.message);
+    }
 }
 
 function loadAndStart(name, password) {
@@ -714,6 +736,7 @@ function loadAndStart(name, password) {
             loginStatusMsg.textContent = "正在連線雲端存檔...";
             loginStatusMsg.classList.remove('error');
         }
+        addDebugLog(`正在載入玩家 [${name}] 的雲端存檔...`);
         
         promiseTimeout(
             db.collection('global_profiles').doc(name).get(),
@@ -724,14 +747,16 @@ function loadAndStart(name, password) {
                 if (doc.exists) {
                     const p = doc.data();
                     if (p) {
-                        // Check password (if profile has no password field, auto-bind the entered one)
+                        addDebugLog(`已讀取到 [${name}] 雲端資料。`);
                         if (!p.password) {
                             p.password = password;
+                            addDebugLog(`舊帳號自動綁定新輸入密碼。`);
                             db.collection('global_profiles').doc(name).update({ password: password })
                                 .catch(e => console.error("Auto-bind password failed:", e));
                         }
                         
                         if (p.password === password) {
+                            addDebugLog(`密碼比對成功！玩家 [${name}] 成功登入。`);
                             p.id = p.id || p.name || doc.id || name;
                             profiles = [p];
                             localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
@@ -741,6 +766,7 @@ function loadAndStart(name, password) {
                             const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
                             startBattle(targetStage);
                         } else {
+                            addDebugLog(`❌ 密碼錯誤：輸入密碼與雲端紀錄不符！`);
                             if (loginStatusMsg) {
                                 loginStatusMsg.textContent = "❌ 密碼錯誤，請重新輸入！";
                                 loginStatusMsg.classList.add('error');
@@ -748,12 +774,13 @@ function loadAndStart(name, password) {
                         }
                     }
                 } else {
-                    // Profile does not exist, auto-create
+                    addDebugLog(`雲端未找到 [${name}]，進入背景自動註冊。`);
                     autoRegisterAndStart(name, password);
                 }
             })
             .catch(error => {
                 console.error("Firestore load failed, falling back to LocalStorage:", error);
+                addDebugLog(`❌ 雲端連線失敗：${error.message}`);
                 if (loginStatusMsg) {
                     loginStatusMsg.textContent = "⚠️ 雲端連線失敗：" + error.message;
                     loginStatusMsg.classList.add('error');
@@ -766,6 +793,7 @@ function loadAndStart(name, password) {
 }
 
 function loadAndStartFromLocal(name, password) {
+    addDebugLog(`切換至本機快取讀取玩家 [${name}]...`);
     const saved = localStorage.getItem('math_boss_profiles');
     let localProfiles = [];
     if (saved) {
@@ -788,6 +816,7 @@ function loadAndStartFromLocal(name, password) {
         }
         
         if (p.password === password) {
+            addDebugLog(`本機玩家 [${name}] 登入成功。`);
             p.id = p.id || p.name || name;
             profiles = [p];
             localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
@@ -796,13 +825,14 @@ function loadAndStartFromLocal(name, password) {
             const targetStage = Math.min(p.unlockedStageIndex || 0, stages.length - 1);
             startBattle(targetStage);
         } else {
+            addDebugLog(`❌ 本機密碼比對失敗！`);
             if (loginStatusMsg) {
                 loginStatusMsg.textContent = "❌ 密碼錯誤，請重新輸入！";
                 loginStatusMsg.classList.add('error');
             }
         }
     } else {
-        // Auto register local
+        addDebugLog(`本機未找到該玩家，自動註冊本機新角色 [${name}]。`);
         const newProfile = {
             id: name,
             name: name,
@@ -819,13 +849,32 @@ function loadAndStartFromLocal(name, password) {
 }
 
 function autoRegisterAndStart(name, password) {
+    let unlockedStageIndex = 0;
+    let history = [];
+    
+    const saved = localStorage.getItem('math_boss_profiles');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            const localProfiles = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+            const localP = localProfiles.find(x => x && x.name === name);
+            if (localP) {
+                unlockedStageIndex = localP.unlockedStageIndex || 0;
+                history = localP.history || [];
+                addDebugLog(`繼承本機已挑戰進度：第 ${unlockedStageIndex + 1} 關`);
+            }
+        } catch (e) {
+            console.error("Failed to parse local progress for migration:", e);
+        }
+    }
+
     const newProfile = {
         id: name,
         name: name,
         password: password,
         order: '老大',
-        unlockedStageIndex: 0,
-        history: []
+        unlockedStageIndex: unlockedStageIndex,
+        history: history
     };
 
     profiles = [newProfile];
@@ -833,23 +882,27 @@ function autoRegisterAndStart(name, password) {
     activeProfileId = newProfile.id;
 
     if (isFirebaseActive) {
+        addDebugLog(`正在寫入新玩家 [${name}] 註冊資料至雲端...`);
         promiseTimeout(
             db.collection('global_profiles').doc(name).set(newProfile),
             4000,
             "雲端註冊連線逾時"
         )
             .then(() => {
-                console.log("Registered profile to cloud with password");
+                addDebugLog(`🎉 玩家 [${name}] 雲端資料庫註冊成功！`);
                 loadLeaderboard();
             })
             .catch(err => {
                 console.error("Firestore register write failed:", err);
-                alert("⚠️ 雲端註冊存檔失敗：" + err.message + "\n（將以本機模式繼續遊戲，進度將儲存在您的瀏覽器中）");
+                addDebugLog(`❌ 雲端註冊寫入失敗：${err.message}`);
             });
     }
 
     if (loginStatusMsg) loginStatusMsg.textContent = "";
-    startBattle(0);
+    
+    // Start battle directly at their unlocked stage level
+    const targetStage = Math.min(unlockedStageIndex, stages.length - 1);
+    startBattle(targetStage);
 }
 
 function loadLeaderboard() {
@@ -857,10 +910,12 @@ function loadLeaderboard() {
     
     if (!isFirebaseActive) {
         leaderboardList.innerHTML = '<div class="leaderboard-empty">⚠️ 未設定雲端資料庫，無法載入排行榜。</div>';
+        addDebugLog("排行榜載入中斷：Firebase 未啟用。");
         return;
     }
     
     leaderboardList.innerHTML = '<div class="leaderboard-loading">載入排行中...</div>';
+    addDebugLog("正在載入全球排行榜...");
     
     promiseTimeout(
         db.collection('global_profiles')
@@ -875,9 +930,11 @@ function loadLeaderboard() {
             
             if (querySnapshot.empty) {
                 leaderboardList.innerHTML = '<div class="leaderboard-empty">🏆 目前尚無排行榜資料。第一個挑戰吧！</div>';
+                addDebugLog("排行榜載入完成：目前資料庫中無任何排名資料。");
                 return;
             }
             
+            addDebugLog(`排行榜載入成功：已載入 ${querySnapshot.size} 名玩家排行。`);
             let rank = 1;
             querySnapshot.forEach(doc => {
                 const p = doc.data();
@@ -911,6 +968,7 @@ function loadLeaderboard() {
         })
         .catch(err => {
             console.error("Failed to load leaderboard:", err);
+            addDebugLog(`❌ 排行榜載入失敗：${err.message}`);
             leaderboardList.innerHTML = `<div class="leaderboard-empty">❌ 排行榜載入失敗 (${err.message})</div>`;
         });
 }
@@ -1021,6 +1079,7 @@ function saveActiveProfileProgress(hasPassed) {
 
         // Save to Firestore if active
         if (isFirebaseActive) {
+            addDebugLog(`正在同步 [${activeProfile.name}] 的進度至雲端（解鎖關卡：第 ${activeProfile.unlockedStageIndex + 1} 關）...`);
             promiseTimeout(
                 db.collection('global_profiles').doc(activeProfileId).set(activeProfile),
                 4000,
@@ -1028,11 +1087,12 @@ function saveActiveProfileProgress(hasPassed) {
             )
                 .then(() => {
                     console.log("Progress successfully updated in Firestore");
+                    addDebugLog(`🎉 進度同步雲端成功！重新整理排行榜。`);
                     loadLeaderboard(); // refresh leaderboard
                 })
                 .catch(err => {
                     console.error("Firestore progress write failed:", err);
-                    alert("⚠️ 雲端進度同步失敗：" + err.message + "\n（您的最新進度已儲存於本機瀏覽器，請檢查網路或資料庫設定）");
+                    addDebugLog(`❌ 進度同步失敗：${err.message}`);
                 });
         }
     }
