@@ -39,29 +39,32 @@
                 <div class="profile-section grid-split">
                     <!-- Left Column: User Selection -->
                     <div class="split-left">
-                        <!-- Firebase Group Code Sync Header/Input -->
-                        <div class="sync-group-panel">
-                            <span class="sync-title">🌐 雲端同步代碼：</span>
-                            <div class="sync-input-row">
-                                <input type="text" id="sync-group-code" placeholder="輸入同家族/班級代碼 (選填)" maxlength="15">
-                                <button id="btn-sync-group" class="btn-small secondary">同步資料</button>
+                        <!-- 1. Name Login Panel -->
+                        <div id="name-login-container" class="name-login-container">
+                            <h3 class="section-title">👤 登入勇者角色</h3>
+                            <div class="login-input-row">
+                                <input type="text" id="login-name-input" placeholder="請輸入您的勇者姓名 (例如：小華)" maxlength="8">
+                                <button id="btn-login-submit" class="btn-small primary">進入遊戲</button>
                             </div>
-                            <span id="sync-status" class="sync-status-msg"></span>
+                            <span id="login-status-msg" class="sync-status-msg"></span>
                         </div>
 
-                        <h3 class="section-title">👤 選擇勇者角色：</h3>
-                        <div class="profiles-grid" id="profiles-grid">
-                            <!-- Profile cards will be generated dynamically -->
-                        </div>
-                        
-                        <!-- Create Profile Form -->
-                        <div id="profile-form-container" class="profile-form-container glass hidden">
-                            <h4>✨ 登記新勇者</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="profile-name">勇者姓名</label>
-                                    <input type="text" id="profile-name" placeholder="請輸入姓名（例如：小華）" maxlength="8">
+                        <!-- 2. Active Profile Display -->
+                        <div id="active-hero-container" class="active-hero-container hidden">
+                            <h3 class="section-title">👤 當前勇者角色</h3>
+                            <div class="active-hero-wrapper glass">
+                                <div id="active-hero-card" class="active-hero-card">
+                                    <!-- Dynamic content will load here -->
                                 </div>
+                                <button id="btn-switch-hero" class="btn-small secondary">切換角色</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. Register Birth Order Form -->
+                        <div id="register-hero-container" class="profile-form-container glass hidden">
+                            <h4>✨ 登記新勇者</h4>
+                            <p class="register-hint" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">首度進入，請選取您的出生順序來建立新存檔！</p>
+                            <div class="form-row">
                                 <div class="form-group">
                                     <label for="profile-order">出生順序</label>
                                     <select id="profile-order">
@@ -77,8 +80,8 @@
                                 </div>
                             </div>
                             <div class="form-actions">
-                                <button id="btn-submit-profile" class="btn-small primary">建立角色</button>
-                                <button id="btn-cancel-profile" class="btn-small secondary">取消</button>
+                                <button id="btn-register-submit" class="btn-small primary">建立並登入</button>
+                                <button id="btn-register-cancel" class="btn-small secondary">取消</button>
                             </div>
                         </div>
                     </div>
