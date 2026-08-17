@@ -754,9 +754,8 @@ function loadAndStart(name, password) {
             })
             .catch(error => {
                 console.error("Firestore load failed, falling back to LocalStorage:", error);
-                alert("⚠️ 雲端連線失敗 (" + error.message + ")，將切換為本機模式繼續。");
                 if (loginStatusMsg) {
-                    loginStatusMsg.textContent = "⚠️ 雲端連線失敗，改用本機快取開戰。";
+                    loginStatusMsg.textContent = "⚠️ 雲端連線失敗：" + error.message;
                     loginStatusMsg.classList.add('error');
                 }
                 loadAndStartFromLocal(name, password);
