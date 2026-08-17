@@ -1207,8 +1207,8 @@ body {
     border-radius: 12px;
 }
 
-.profile-form-container.hidden {
-    display: none;
+.hidden {
+    display: none !important;
 }
 
 .profile-form-container h4 {
