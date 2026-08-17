@@ -10,6 +10,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;500;700;900&display=swap" rel="stylesheet">
     <!-- Stylesheet -->
     <link rel="stylesheet" href="index.css">
+    <!-- Firebase App and Firestore SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <!-- Background cyber grid decoration -->
@@ -34,6 +37,16 @@
 
                 <!-- Profile Management Section -->
                 <div class="profile-section">
+                    <!-- Firebase Group Code Sync Header/Input -->
+                    <div class="sync-group-panel">
+                        <span class="sync-title">🌐 雲端同步代碼：</span>
+                        <div class="sync-input-row">
+                            <input type="text" id="sync-group-code" placeholder="輸入同家族/班級代碼 (選填)" maxlength="15">
+                            <button id="btn-sync-group" class="btn-small secondary">同步資料</button>
+                        </div>
+                        <span id="sync-status" class="sync-status-msg"></span>
+                    </div>
+
                     <h3 class="section-title">👤 選擇勇者角色：</h3>
                     <div class="profiles-grid" id="profiles-grid">
                         <!-- Profile cards will be generated dynamically -->

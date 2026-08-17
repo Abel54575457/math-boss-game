@@ -14,6 +14,8 @@ flowchart TD
     Start([啟動 index.html]) --> Home{首頁角色選擇}
     Home -->|尚未登記| Register[登記新勇者]
     Register -->|輸入姓名及出生順序| Home
+    Home -->|輸入家族代碼並點擊同步| SyncCloud[連線 Firebase 讀取雲端角色清單 / 同步快取]
+    SyncCloud --> Home
     Home -->|選取已有角色| Select[鎖定勇者/載入存檔進度]
     Select --> Play[點擊開始戰鬥]
     
@@ -40,8 +42,9 @@ flowchart TD
     EnforceRule -->|是| Win[擊敗魔王 / 自動解鎖並升級下一關]
     EnforceRule -->|否| Fail
     
-    Win --> BackHome[點擊返回首頁 / 接續新進度]
-    Fail --> BackHome
+    Win --> SaveProgress[儲存進度至 LocalStorage 及 Firebase 雲端]
+    Fail --> BackHome[點擊返回首頁 / 接續新進度]
+    SaveProgress --> BackHome
 ```
 
 ---
@@ -72,14 +75,21 @@ flowchart TD
 
 ---
 
-## 💾 技術與進度儲存機制 (LocalStorage)
+## 💾 技術與進度儲存機制 (LocalStorage / Firebase Firestore)
 
-為了方便在不同時間接續遊玩，本遊戲採用瀏覽器的 **LocalStorage** 進行零伺服器本機儲存：
+為了方便在不同時間接續遊玩，本遊戲採用 **雙重混合儲存技術**：
 
+### 1. 單機本機儲存 (LocalStorage)
+- 用於儲存玩家的進度快取，即使在沒有網路的環境下也能運作。
 - **`math_boss_profiles`**：儲存玩家角色清單及歷史成績。
-  - 格式：`[{ id, name, order, unlockedStageIndex, history: [...] }]`
-  - `unlockedStageIndex` 記錄解鎖的關卡索引（0 代表第一關，4 代表第五關）。
-- **`math_boss_active_profile_id`**：記錄當前選取的玩家 ID，開啟網頁時會自動帶入上次選取的勇者。
+- **`math_boss_active_profile_id`**：記錄當前選取的玩家 ID。
+- **`math_boss_group_code`**：記錄當前設定的雲端同步家族代碼。
+
+### 2. Firebase Firestore 雲端同步
+- 當在 [app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js) 的 `firebaseConfig` 填入您的 Google Firebase 金鑰，且在網頁輸入了 **「雲端同步代碼」** 時：
+  - 新增角色、更新解鎖進度及作答紀錄會同步寫入雲端的 Firestore 資料庫中。
+  - 路徑結構：`/groups/{家族代碼}/profiles/{角色ID}`。
+  - 在任何新裝置上輸入同一個「家族代碼」並點擊「同步資料」，即可立刻載入相同的角色名單與關卡進度。
 
 ---
 

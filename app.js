@@ -3,6 +3,34 @@
  * Features: Battle state machine, dynamic config, visual effects, and local storage.
  */
 
+// Firebase Configuration - Replace with your own project configuration from Firebase Console!
+const firebaseConfig = {
+  apiKey: "AIzaSyBkYIxsmK9qqbfFSoxzoUFSlAo0uy1E4jc",
+  authDomain: "math-boss-game.firebaseapp.com",
+  projectId: "math-boss-game",
+  storageBucket: "math-boss-game.firebasestorage.app",
+  messagingSenderId: "319406455291",
+  appId: "1:319406455291:web:3166380b46fee31c16b35e",
+  measurementId: "G-BNDBM247LW"
+};
+
+// Initialize Firebase App & Firestore
+let db = null;
+let isFirebaseActive = false;
+
+try {
+    if (firebaseConfig && firebaseConfig.projectId && typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isFirebaseActive = true;
+        console.log("Firebase initialized successfully!");
+    } else {
+        console.log("Firebase is not configured or SDK not loaded. Operating in Local Mode.");
+    }
+} catch (error) {
+    console.error("Firebase initialization failed:", error);
+}
+
 // Default configuration from user request
 const DEFAULT_STAGES = [
     {
@@ -180,6 +208,11 @@ const screenBattle = document.getElementById('screen-battle');
 const btnStartGame = document.getElementById('btn-start-game');
 const btnQuitBattle = document.getElementById('btn-quit-battle');
 
+// Sync elements
+const syncGroupCodeInput = document.getElementById('sync-group-code');
+const btnSyncGroup = document.getElementById('btn-sync-group');
+const syncStatusEl = document.getElementById('sync-status');
+
 // Battle Screen Stats
 const stageNumberEl = document.getElementById('stage-number');
 const timerBarFill = document.getElementById('timer-bar-fill');
@@ -256,6 +289,17 @@ function init() {
     // Profile Actions
     btnSubmitProfile.addEventListener('click', createProfile);
     btnCancelProfile.addEventListener('click', () => toggleProfileForm(false));
+
+    // Load Group Code from LocalStorage if present
+    const savedGroupCode = localStorage.getItem('math_boss_group_code');
+    if (savedGroupCode && syncGroupCodeInput) {
+        syncGroupCodeInput.value = savedGroupCode;
+    }
+
+    // Sync button event listener
+    if (btnSyncGroup) {
+        btnSyncGroup.addEventListener('click', handleGroupSync);
+    }
 
     // Load initial profiles
     loadProfiles();
@@ -756,6 +800,57 @@ function closeModal(modal) {
    ========================================================================== */
 
 function loadProfiles() {
+    const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
+    
+    if (isFirebaseActive && groupCode) {
+        if (syncStatusEl) {
+            syncStatusEl.textContent = "正在同步雲端資料...";
+            syncStatusEl.classList.remove('error');
+        }
+        
+        db.collection('groups').doc(groupCode).collection('profiles').get()
+            .then(querySnapshot => {
+                const fetched = [];
+                querySnapshot.forEach(doc => {
+                    fetched.push(doc.data());
+                });
+                profiles = fetched;
+                
+                // Cache to LocalStorage
+                localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+                
+                // Restore active selection
+                const savedActive = localStorage.getItem('math_boss_active_profile_id');
+                if (savedActive && profiles.some(p => p.id === savedActive)) {
+                    activeProfileId = savedActive;
+                } else {
+                    activeProfileId = null;
+                }
+                
+                renderProfiles();
+                updateStartButtonState();
+                if (syncStatusEl) {
+                    syncStatusEl.textContent = "✅ 已成功與雲端同步！";
+                    syncStatusEl.classList.remove('error');
+                }
+            })
+            .catch(error => {
+                console.error("Firestore read failed, falling back to LocalStorage:", error);
+                loadProfilesFromLocal();
+                if (syncStatusEl) {
+                    syncStatusEl.textContent = "⚠️ 雲端讀取失敗，改用本機快取。";
+                    syncStatusEl.classList.add('error');
+                }
+            });
+    } else {
+        loadProfilesFromLocal();
+        if (syncStatusEl) {
+            syncStatusEl.textContent = "";
+        }
+    }
+}
+
+function loadProfilesFromLocal() {
     const saved = localStorage.getItem('math_boss_profiles');
     if (saved) {
         try {
@@ -777,6 +872,35 @@ function loadProfiles() {
 
     renderProfiles();
     updateStartButtonState();
+}
+
+function handleGroupSync() {
+    if (!syncGroupCodeInput) return;
+    const groupCode = syncGroupCodeInput.value.trim();
+    
+    if (!groupCode) {
+        localStorage.removeItem('math_boss_group_code');
+        if (syncStatusEl) {
+            syncStatusEl.textContent = "❌ 已改用本機單機模式。";
+            syncStatusEl.classList.remove('error');
+        }
+        loadProfiles();
+        return;
+    }
+    
+    if (!isFirebaseActive) {
+        alert("尚未在 app.js 中配置 Firebase 金鑰。已將您的代碼暫存在本機，並繼續使用本機儲存。");
+        localStorage.setItem('math_boss_group_code', groupCode);
+        if (syncStatusEl) {
+            syncStatusEl.textContent = "⚠️ 尚未設定雲端金鑰，暫以單機執行。";
+            syncStatusEl.classList.add('error');
+        }
+        loadProfiles();
+        return;
+    }
+    
+    localStorage.setItem('math_boss_group_code', groupCode);
+    loadProfiles();
 }
 
 function renderProfiles() {
@@ -875,6 +999,18 @@ function createProfile() {
     activeProfileId = newProfile.id;
     localStorage.setItem('math_boss_active_profile_id', newProfile.id);
 
+    // Save to Firestore if active
+    const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
+    if (isFirebaseActive && groupCode) {
+        db.collection('groups').doc(groupCode).collection('profiles').doc(newProfile.id).set(newProfile)
+            .then(() => {
+                console.log("Profile successfully created in Firestore");
+            })
+            .catch(err => {
+                console.error("Firestore write failed:", err);
+            });
+    }
+
     toggleProfileForm(false);
     renderProfiles();
     updateStartButtonState();
@@ -901,9 +1037,21 @@ function saveActiveProfileProgress(hasPassed) {
             date: new Date().toLocaleDateString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' })
         });
 
-        // Save profiles list
+        // Save profiles locally
         localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
         renderProfiles();
+
+        // Save to Firestore if active
+        const groupCode = syncGroupCodeInput ? syncGroupCodeInput.value.trim() : localStorage.getItem('math_boss_group_code');
+        if (isFirebaseActive && groupCode) {
+            db.collection('groups').doc(groupCode).collection('profiles').doc(activeProfile.id).set(activeProfile)
+                .then(() => {
+                    console.log("Progress successfully updated in Firestore");
+                })
+                .catch(err => {
+                    console.error("Firestore progress write failed:", err);
+                });
+        }
     }
 }
 

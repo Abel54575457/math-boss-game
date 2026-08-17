@@ -1,6 +1,6 @@
-# Walkthrough: Math Boss Battle Game (Cartoon Avatars Edition)
+# Walkthrough: Math Boss Battle Game (Firebase Firestore Cloud Sync Edition)
 
-We have successfully **cartoonized the original photos** of the 5 bosses (朱孟玲, 朱佩玲, 雁玲, 溫化有, 朱振興) and set them as the official game关主 (Stage Bosses).
+We have successfully integrated a **Firebase Firestore Cloud database** into the game, complete with a frictionless "Family/Group Code" sync mechanism and automatic LocalStorage offline fallback.
 
 ---
 
@@ -21,48 +21,45 @@ Use the carousel below to view the cartoonized premium illustration card avatars
 
 ---
 
+## ☁️ Firebase Firestore Cloud Sync
+
+### 1. Frictionless Group Code UI
+- Added a **「雲端同步代碼」** (Cloud Sync Code) input panel directly on the profile screen in [index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html).
+- Families or classroom groups can enter a custom code (e.g. `朱家班` or `1234`) and click **「同步資料」** to instantly download and load all profiles stored under that code in the cloud database.
+
+### 2. Hybrid Data Persistence & Fallback
+- **Cloud Mode**: If a `firebaseConfig` is active at the top of [app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js) and a Group Code is entered, creating characters, updating level unlocks, and adding combat history will write to Firestore globally.
+- **Offline / Local Mode**: If no Firebase credentials are configured in the code, the game displays a warning and automatically falls back to single-device LocalStorage so the game never breaks. It also caches cloud-fetched data locally to allow offline playing.
+
+---
+
 ## 👤 Hero Profile Selection & Resume Features
 
 1. **Child Identity & Birth Order**:
    - The home screen lists existing characters and has a **「登記新勇者」(Register New Hero)** button.
    - Children register by entering their **姓名 (Name)** and selecting their **出生順序 (Birth Order)** (老大, 老二, 老三, 老四, 老五, 老六, 阿公, 阿婆).
-   - Customized emojis are automatically assigned to profiles based on birth order:
-     - **老大 (Oldest)**: 👑 (Crown)
-     - **老二 (Second)**: 🥈 (Silver Medal)
-     - **老三 (Third)**: 🥉 (Bronze Medal)
-     - **阿公 (Grandfather)**: 👴
-     - **阿婆 (Grandmother)**: 👵
-     - **Others**: 👦
+   - Emojis are assigned dynamically: 老大 $\rightarrow$ 👑, 老二 $\rightarrow$ 🥈, 老三 $\rightarrow$ 🥉, 阿公 $\rightarrow$ 👴, 阿婆 $\rightarrow$ 👵, others $\rightarrow$ 👦.
 
-2. **Progression Memory & Auto-Resume**:
-   - Profiles are saved in `localStorage` under `math_boss_profiles`.
-   - Each time a child selects their profile, the main **「開始戰鬥」(Start Battle)** button is activated and displays their progress: *「開始戰鬥 (進度: 第 X 關)」*.
-   - When clicked, it automatically launches the correct stage, allowing them to pick up right where they left off.
-
-3. **Battle Stage Integration**:
-   - When a stage is successfully cleared (answering at least 8 out of 10 questions correctly), the game automatically saves the clearance index, unlocking the next stage index for the active child profile.
-   - Cleared stages are recorded in their profile's history log, keeping track of dates and performance statistics.
+2. **Progression Memory**:
+   - Selecting a profile locks their stage level progress, modifying the start button: *「開始戰鬥 (進度: 第 X 關)」*.
+   - Battle results, scores, and completion history are stored per profile.
 
 ---
 
 ## ⚙️ Gameplay Mechanics
 
 1. **Random 10-out-of-20 Selector**:
-   - In [app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js), when a battle starts, `shuffleArray()` shuffles the stage's 20-question pool.
-   - The first 10 questions are sliced and set as the active questions for the current session.
+   - When a battle starts, `shuffleArray()` shuffles the stage's 20-question pool.
+   - The first 10 questions are sliced and set as the active questions.
 
 2. **Dynamic Option Shuffling**:
    - Every time a question is loaded, the 4 answer choices are dynamically shuffled.
    - The index of the correct answer is recalculated dynamically in memory.
    - This ensures options are completely randomized and the correct answer is evenly distributed across A, B, C, D (25% probability each), preventing any pattern concentration.
 
-3. **Auto LocalStorage Upgrade**:
-   - The game loader in `init()` detects if a player has an older saved configuration (e.g., only containing Stage 1 or 2) and automatically overrides their database to include the new 5 stages.
-
 ---
 
 ## 📁 Source Files Updated
-- **[index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html)** - Core DOM structure with profile selectors (removed JSON editor hooks).
-- **[index.css](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.css)** - Aesthetic styling system, glassmorphic layout, and custom action menus.
-- **[app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js)** - Game loop controller, dynamic random question pool, dynamic option shuffling, and progression management (removed JSON editor methods).
-- **`assets/boss_*.png`** - Modified cartoonized avatars matching the 5 boss levels.
+- **[index.html](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.html)** - Imported Firebase Compat SDKs, added Group Code sync inputs.
+- **[index.css](file:///c:/Users/chuch/OneDrive/Desktop/Agent/index.css)** - Added style rules for `.sync-group-panel` and associated elements.
+- **[app.js](file:///c:/Users/chuch/OneDrive/Desktop/Agent/app.js)** - Initialized Firebase, rewrote load/save algorithms to bridge LocalStorage and Firestore under a Group Code document tree.

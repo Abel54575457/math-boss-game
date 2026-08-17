@@ -1301,3 +1301,56 @@ body {
     box-shadow: none;
     transform: none;
 }
+
+/* Firebase Sync Panel styles */
+.sync-group-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.sync-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 6px var(--neon-cyan-glow);
+}
+
+.sync-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.sync-input-row input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 0.95rem;
+    outline: none;
+    transition: all var(--trans-fast);
+}
+
+.sync-input-row input:focus {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 8px var(--neon-cyan-glow);
+}
+
+.sync-status-msg {
+    font-size: 0.8rem;
+    color: var(--neon-green);
+    min-height: 18px;
+    display: block;
+    margin-top: 4px;
+}
+
+.sync-status-msg.error {
+    color: var(--danger);
+}
