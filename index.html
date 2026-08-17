@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Boss Battle - 數學大魔王挑戰</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- Background cyber grid decoration -->
+    <div class="cyber-grid"></div>
+    <div class="cyber-scanline"></div>
+    <div class="ambient-glow"></div>
+
+    <!-- MAIN CONTAINER -->
+    <main id="app-container">
+
+        <!-- 1. INTRO / START SCREEN -->
+        <section id="screen-intro" class="game-screen active">
+            <div class="logo-container">
+                <h1 class="glitch-text" data-text="MATH BOSS">MATH BOSS</h1>
+                <h2 class="sub-logo">數學大魔王挑戰</h2>
+            </div>
+            
+            <div class="intro-card glass">
+                <p class="intro-desc">
+                    運算與手速的極致對決！擊敗迎面而來的數學大魔王，解鎖更高等級的數學挑戰。
+                </p>
+
+                <!-- Profile Management Section -->
+                <div class="profile-section">
+                    <h3 class="section-title">👤 選擇勇者角色：</h3>
+                    <div class="profiles-grid" id="profiles-grid">
+                        <!-- Profile cards will be generated dynamically -->
+                    </div>
+                    
+                    <!-- Create Profile Form -->
+                    <div id="profile-form-container" class="profile-form-container glass hidden">
+                        <h4>✨ 登記新勇者</h4>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="profile-name">勇者姓名</label>
+                                <input type="text" id="profile-name" placeholder="請輸入姓名（例如：小華）" maxlength="8">
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-order">出生順序</label>
+                                <select id="profile-order">
+                                    <option value="老大">老大 (第一個孩子)</option>
+                                    <option value="老二">老二 (第二個孩子)</option>
+                                    <option value="老三">老三 (第三個孩子)</option>
+                                    <option value="老四">老四 (第四個孩子)</option>
+                                    <option value="老五">老五 (第五個孩子)</option>
+                                    <option value="老六">老六 (第六個孩子)</option>
+                                    <option value="阿公">阿公</option>
+                                    <option value="阿婆">阿婆</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button id="btn-submit-profile" class="btn-small primary">建立角色</button>
+                            <button id="btn-cancel-profile" class="btn-small secondary">取消</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="intro-actions">
+                    <button id="btn-start-game" class="btn-glow primary" disabled>請先選擇勇者角色</button>
+                </div>
+            </div>
+
+            <div class="game-footer">
+                <p>Designed for Ultimate Math Warriors &copy; 2026</p>
+            </div>
+        </section>
+
+        <!-- 2. BATTLE SCREEN -->
+        <section id="screen-battle" class="game-screen">
+            <!-- Header bar -->
+            <header class="battle-header glass">
+                <div class="header-badges">
+                    <div class="stage-badge">
+                        <span class="label">STAGE</span>
+                        <span id="stage-number" class="value">01</span>
+                    </div>
+                    <div class="quest-badge">
+                        <span class="label">QUEST</span>
+                        <span id="question-progress" class="value">1/10</span>
+                    </div>
+                    <div class="goal-badge">
+                        <span class="label">GOAL</span>
+                        <span id="goal-progress" class="value">0/8</span>
+                    </div>
+                </div>
+                <div class="timer-wrapper">
+                    <div class="timer-bar-bg">
+                        <div id="timer-bar-fill" class="timer-bar-fill"></div>
+                    </div>
+                    <span id="timer-text" class="timer-text">15s</span>
+                </div>
+                <div class="header-actions">
+                    <button id="btn-quit-battle" class="btn-icon danger" title="退出">❌</button>
+                </div>
+            </header>
+
+            <!-- Battle Arena Grid -->
+            <div class="battle-arena">
+                <!-- Player Side (Left) -->
+                <div class="arena-side player-side glass">
+                    <div class="avatar-wrapper">
+                        <div class="avatar-glow"></div>
+                        <div class="player-avatar-placeholder">
+                            <span class="avatar-emoji">⚔️</span>
+                        </div>
+                    </div>
+                    <div class="character-info">
+                        <h3 class="char-name">數學勇者</h3>
+                        <div class="hp-container">
+                            <div class="hp-label">HP <span id="player-hp-text">100/100</span></div>
+                            <div class="hp-bar-outer">
+                                <div id="player-hp-bar" class="hp-bar-inner player-hp"></div>
+                            </div>
+                        </div>
+                        <div class="combo-container">
+                            <div class="combo-label">COMBO <span id="combo-count">0</span></div>
+                            <div class="combo-dots" id="combo-dots">
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Versus / Battle Effects Overlay -->
+                <div class="versus-divider">
+                    <span class="vs-text">VS</span>
+                </div>
+
+                <!-- Boss Side (Right) -->
+                <div class="arena-side boss-side glass" id="boss-card">
+                    <div class="avatar-wrapper">
+                        <div class="avatar-glow boss-glow"></div>
+                        <img id="boss-avatar" src="" alt="Boss Avatar" class="boss-image">
+                        <div class="damage-flash-overlay" id="boss-damage-overlay"></div>
+                    </div>
+                    <div class="character-info">
+                        <h3 id="boss-name" class="char-name red-glow">大魔王</h3>
+                        <div class="hp-container">
+                            <div class="hp-label">HP <span id="boss-hp-text">100/100</span></div>
+                            <div class="hp-bar-outer">
+                                <div id="boss-hp-bar" class="hp-bar-inner boss-hp"></div>
+                            </div>
+                        </div>
+                        <div class="boss-bubble glass" id="boss-dialogue-bubble">
+                            <p id="boss-dialogue">想過第一關？先算對我的乘除法！</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floating Damage Text Container -->
+            <div id="effect-layer" class="effect-layer"></div>
+
+            <!-- Question and Answers Area -->
+            <div class="control-panel glass">
+                <div class="question-box">
+                    <div class="question-header">請計算以下題目：</div>
+                    <div id="question-text" class="question-text">48 × 6 = ?</div>
+                </div>
+                <div class="options-grid" id="options-grid">
+                    <button class="btn-option glass" data-index="0">248</button>
+                    <button class="btn-option glass" data-index="1">288</button>
+                    <button class="btn-option glass" data-index="2">268</button>
+                    <button class="btn-option glass" data-index="3">278</button>
+                </div>
+            </div>
+
+            <!-- Battle Logs Feed -->
+            <div class="battle-logs-container glass">
+                <div class="logs-header">戰鬥日誌</div>
+                <div class="logs-body" id="logs-body">
+                    <div class="log-entry system">戰鬥開始！請準備好你的數學大腦。</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 4. VICTORY MODAL -->
+    <div id="modal-victory" class="modal-overlay">
+        <div class="modal-content glass celebration-content">
+            <div class="modal-header header-center">
+                <h1 class="victory-title text-rainbow">VICTORY!</h1>
+            </div>
+            <div class="modal-body text-center">
+                <div class="victory-banner">🎉 挑戰成功 🎉</div>
+                <p id="victory-message" class="celebration-msg">你成功擊敗了大魔王！</p>
+                
+                <div class="stats-card glass">
+                    <div class="stat-row">
+                        <span class="stat-label">答對題數:</span>
+                        <span id="stat-correct" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">總答題數:</span>
+                        <span id="stat-total" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">剩餘 HP:</span>
+                        <span id="stat-hp" class="stat-value text-green">100/100</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer footer-center">
+                <button id="btn-next-stage" class="btn-glow primary">下一關</button>
+                <button id="btn-victory-home" class="btn-glow secondary">回首頁</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. DEFEAT MODAL -->
+    <div id="modal-defeat" class="modal-overlay">
+        <div class="modal-content glass defeat-content">
+            <div class="modal-header header-center">
+                <h1 class="defeat-title text-red-glow">GAME OVER</h1>
+            </div>
+            <div class="modal-body text-center">
+                <div class="defeat-banner">💀 戰敗 💀</div>
+                <p id="defeat-message" class="defeat-msg">魔王力量過於強大，請再接再厲！</p>
+                
+                <div class="stats-card glass">
+                    <div class="stat-row">
+                        <span class="stat-label">擊敗進度:</span>
+                        <span id="stat-defeat-progress" class="stat-value text-red">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer footer-center">
+                <button id="btn-retry" class="btn-glow primary">重新挑戰</button>
+                <button id="btn-defeat-home" class="btn-glow secondary">回首頁</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Game Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
