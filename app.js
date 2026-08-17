@@ -1,7 +1,7 @@
-/**
- * MATH BOSS BATTLE - GAME ENGINE
- * Features: Battle state machine, dynamic config, visual effects, and local storage.
- */
+window.onerror = function(message, source, lineno, colno, error) {
+    alert("❌ 偵測到 JavaScript 錯誤:\n訊息: " + message + "\n檔案: " + source + "\n行號: " + lineno);
+    return false;
+};
 
 // Firebase Configuration - Replace with your own project configuration from Firebase Console!
 const firebaseConfig = {
@@ -941,6 +941,42 @@ function openModal(modal) {
 
 function closeModal(modal) {
     modal.classList.remove('active');
+}
+
+function saveActiveProfileProgress(hasPassed) {
+    if (!activeProfileId) return;
+    const activeProfile = profiles.find(p => p.id === activeProfileId);
+    if (!activeProfile) return;
+
+    if (hasPassed) {
+        if (currentStageIndex === activeProfile.unlockedStageIndex) {
+            activeProfile.unlockedStageIndex++;
+        }
+        
+        if (!activeProfile.history) activeProfile.history = [];
+        activeProfile.history.push({
+            stage: stages[currentStageIndex].stage,
+            bossName: stages[currentStageIndex].bossName,
+            correctCount: correctAnswersCount,
+            totalCount: totalAnswersCount,
+            date: new Date().toLocaleDateString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' })
+        });
+
+        // Save profiles locally
+        localStorage.setItem('math_boss_profiles', JSON.stringify(profiles));
+
+        // Save to Firestore if active
+        if (isFirebaseActive) {
+            db.collection('global_profiles').doc(activeProfileId).set(activeProfile)
+                .then(() => {
+                    console.log("Progress successfully updated in Firestore");
+                    loadLeaderboard(); // refresh leaderboard
+                })
+                .catch(err => {
+                    console.error("Firestore progress write failed:", err);
+                });
+        }
+    }
 }
 
 
