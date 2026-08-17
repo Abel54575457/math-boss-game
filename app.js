@@ -277,11 +277,6 @@ function init() {
         btnStartGame.addEventListener('click', handleStartGame);
     }
 
-    // Load active profile from local storage auto-save
-    const savedHeroName = localStorage.getItem('math_boss_active_hero_name');
-    if (savedHeroName && loginNameInput) {
-        loginNameInput.value = savedHeroName;
-    }
 
     // Load global leaderboard
     loadLeaderboard();
